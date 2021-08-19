@@ -34,7 +34,7 @@ var maxFileIndex map[string]int = theIndex_getCurrentMaxFileIndexesOnInit()
 var startIndexAfterBlock = theIndex_getCurrentCursorBlockOnInit()
 
 func (bc *BlockChain) TheIndex_Hook_UpdateCursor(block *types.Block) {
-	if !theIndex_isEnabled() || !theIndex_shouldIndexBlock(block) {
+	if !theIndex_shouldIndexBlock(block) {
 		return
 	}
 
@@ -54,7 +54,7 @@ func (bc *BlockChain) TheIndex_Hook_UpdateCursor(block *types.Block) {
 }
 
 func (bc *BlockChain) TheIndex_Hook_WriteBlockHeader(block *types.Block) {
-	if !theIndex_isEnabled() || !theIndex_shouldIndexBlock(block) {
+	if !theIndex_shouldIndexBlock(block) {
 		return
 	}
 
@@ -83,7 +83,7 @@ func (bc *BlockChain) TheIndex_Hook_WriteBlockHeader(block *types.Block) {
 }
 
 func (bc *BlockChain) TheIndex_Hook_WriteContractsAndAccounts(block *types.Block, logs []*types.Log, state *state.StateDB) {
-	if !theIndex_isEnabled() || !theIndex_shouldIndexBlock(block) {
+	if !theIndex_shouldIndexBlock(block) {
 		return
 	}
 
@@ -180,18 +180,11 @@ func TheIndex_addAccountsToContracts(accounts []rlp.TheIndex_rlpAccount, contrac
 func theIndex_getCurrentMaxFileIndexesOnInit() map[string]int {
 	res := map[string]int{}
 
-	if theIndex_isEnabled() {
-		fmt.Println("THE-INDEX:init", "enabled", indexPath)
-
-		res[blocksFilePrefix] = theIndex_getCurrentMaxFileIndex(blocksFilePrefix)
-		res[accountsFilePrefix] = theIndex_getCurrentMaxFileIndex(accountsFilePrefix)
-		for shard := 0; shard < int(contractShards); shard++ {
-			filePrefix := fmt.Sprintf(contractsShardFilePrefix, shard)
-			res[filePrefix] = theIndex_getCurrentMaxFileIndex(filePrefix)
-		}
-
-	} else {
-		fmt.Println("THE-INDEX:init", "disabled", indexPath)
+	res[blocksFilePrefix] = theIndex_getCurrentMaxFileIndex(blocksFilePrefix)
+	res[accountsFilePrefix] = theIndex_getCurrentMaxFileIndex(accountsFilePrefix)
+	for shard := 0; shard < int(contractShards); shard++ {
+		filePrefix := fmt.Sprintf(contractsShardFilePrefix, shard)
+		res[filePrefix] = theIndex_getCurrentMaxFileIndex(filePrefix)
 	}
 	return res
 }
@@ -234,6 +227,12 @@ func theIndex_getCurrentMaxFileIndex(prefix string) int {
 }
 
 func theIndex_getCurrentCursorBlockOnInit() uint64 {
+	if !theIndex_isEnabled() {
+		fmt.Errorf("the environment variable THEINDEX_PATH is missing, or the directory does not exist")
+	} else {
+		fmt.Println("THE-INDEX:init", indexPath)
+	}
+
 	file, err := theIndex_openFileRead(cursorFileName)
 	if err != nil {
 		fmt.Println("THE-INDEX:init", "cursor not found")
