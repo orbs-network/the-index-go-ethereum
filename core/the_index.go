@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"math/big"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -19,7 +18,7 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 )
 
-const contractShards int = 256
+const contractShards int = 65536
 const maxFileSizeMb = 1024
 const fileIndexFormat = "%05d"
 
@@ -98,9 +97,10 @@ func (bc *BlockChain) TheIndex_Hook_WriteContractsAndAccounts(block *types.Block
 	TheIndex_addAccountsToContracts(accounts, contracts)
 
 	// shard the contracts
-	contractsPerShard := map[byte][]rlp.TheIndex_rlpContract{}
+	contractsPerShard := map[[2]byte][]rlp.TheIndex_rlpContract{}
 	for address, contract := range contracts {
-		shard := address[0]
+		var shard [2]byte
+		copy(shard[:], address[:2])
 		// new shard, add it to the map
 		if _, ok := contractsPerShard[shard]; !ok {
 			contractsPerShard[shard] = make([]rlp.TheIndex_rlpContract, 0)
@@ -253,13 +253,6 @@ func theIndex_getCurrentCursorBlockOnInit() uint64 {
 
 func theIndex_openFileAppendWithPaging(prefix string) (*os.File, error) {
 	filePath := fmt.Sprintf(indexPath+prefix+fileIndexFormat+".rlp", maxFileIndex[prefix])
-	stat, err := os.Stat(filePath)
-	if err == nil && stat.Size() >= maxFileSizeMb*1024*1024 {
-		// compress the file and move to the next one
-		exec.Command("gzip", filePath).Run()
-		maxFileIndex[prefix]++
-		filePath = fmt.Sprintf(indexPath+prefix+fileIndexFormat+".rlp", maxFileIndex[prefix])
-	}
 	return os.OpenFile(filePath, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0755)
 }
 
