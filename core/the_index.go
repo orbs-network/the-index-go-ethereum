@@ -4,6 +4,7 @@
 package core
 
 import (
+	"errors"
 	"fmt"
 	"math/big"
 	"os"
@@ -24,11 +25,11 @@ const fileIndexFormat = "%05d"
 
 const blocksFilePrefix = "blocks-"
 const accountsFilePrefix = "accounts-"
-const contractsShardFilePrefix = "contracts-%02x-"
+const contractsShardFilePrefix = "contracts-%04x-"
 const cursorFileName = "cursor"
 
 var theIndexVerbose = os.Getenv("THEINDEX_VERBOSE")
-var indexPath = os.Getenv("THEINDEX_PATH") // eg: "./the-index/"
+var indexPath = os.Getenv("THEINDEX_PATH")
 var maxFileIndex map[string]int = theIndex_getCurrentMaxFileIndexesOnInit()
 var startIndexAfterBlock = theIndex_getCurrentCursorBlockOnInit()
 
@@ -228,7 +229,8 @@ func theIndex_getCurrentMaxFileIndex(prefix string) int {
 
 func theIndex_getCurrentCursorBlockOnInit() uint64 {
 	if !theIndex_isEnabled() {
-		fmt.Errorf("the environment variable THEINDEX_PATH is missing, or the directory does not exist")
+		err := errors.New("the environment variable THEINDEX_PATH is missing, or the directory does not exist")
+		log.Crit("THE-INDEX:critical", "error", err)
 	} else {
 		fmt.Println("THE-INDEX:init", indexPath)
 	}
